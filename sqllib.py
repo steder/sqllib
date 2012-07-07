@@ -27,6 +27,7 @@ class Library(object):
             body = "".join(lines)
             if "$1" in body:
                 def sql(*args):
+                    # TODO: the function signature should be enforced
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body, args).fetchall()

@@ -1,8 +1,34 @@
+"""
+Tests for sqllib
+
+.. todo::
+
+  To allow folks to use sqllib regardless of the their underlying
+  db backend it may make sense to have libraries translate queries
+  paramstyle from one to another at load time.
+
+  sqlite supports at least 3 options for substitutions, namely:
+   - select * from greetings where id = ?
+   - select * from greetings where id = :1
+   - select * from greetings where id = $1
+
+  For example, while sqlite supports the above 3 styles
+  MySQLdb supports only %s paramstyle.  The problem I ran
+  into was using sqlite to help "unit" test some sql that than ran
+  against a mysql database in production.
+
+  To make this work I had a to simply do `query = query.replace("?", "%s")`
+  before actually doing `cursor.execute(query, args)`.
+
+  I think having libraries manage that should make this better.
+
+"""
 
 import sqlite3
 from twisted.trial import unittest
 
 import sqllib
+
 
 
 
@@ -31,16 +57,16 @@ select 2
 preface
 
 [onearg]
-select * from test where id = $1
+select * from greetings where id = $1
 
 """
         self.setupDatabase()
 
     def setupDatabase(self):
         self.connection = sqlite3.Connection(":memory:")
-        self.connection.cursor().execute("create table test (id int, n int, description text)")
-        self.connection.cursor().execute("insert into test (id, n, description) values (1, 1, 'hello')")
-        self.connection.cursor().execute("insert into test (id, n, description) values (2, 1, 'world')")
+        self.connection.cursor().execute("create table greetings (id int, language int, greeting text)")
+        self.connection.cursor().execute("insert into greetings (id, language, greeting) values (1, 1, 'hello world')")
+        self.connection.cursor().execute("insert into greetings (id, language, greeting) values (2, 1, 'yo')")
 
     def _load_library(self, content):
         lib = sqllib.Library.from_string(content)
@@ -67,9 +93,19 @@ select * from test where id = $1
                         "lib should have a 'onearg' attribute")
         self.assertEqual(lib.onearg.__name__, "onearg")
         self.assertEqual(lib.onearg.__doc__,
-                         "select * from test where id = $1\n\n")
+                         "select * from greetings where id = $1\n\n")
         lib.connect(self.connection)
-        self.assertEqual(lib.onearg(1), [(1, 1, u'hello')])
+        self.assertEqual(lib.onearg(1), [(1, 1, u'hello world')])
+
+    def test_libraryWithArgs2(self):
+        lib = self._load_library(self.with_arguments)
+        self.assertTrue(hasattr(lib, "onearg"),
+                        "lib should have a 'onearg' attribute")
+        self.assertEqual(lib.onearg.__name__, "onearg")
+        self.assertEqual(lib.onearg.__doc__,
+                         "select * from greetings where id = $1\n\n")
+        lib.connect(self.connection)
+        self.assertEqual(lib.onearg(2), [(2, 1, u'yo')])
 
     def test_parse_simple(self):
         preface, blocks = sqllib.Library._parse_blocks([s + "\n" for s in self.simple.splitlines()])
@@ -87,5 +123,5 @@ select * from test where id = $1
             [s + "\n" for s in self.with_arguments.splitlines()])
         self.assertEqual(preface, "\n\npreface\n\n\n")
         self.assertEqual(blocks,
-                         {"onearg":["select * from test where id = $1\n", "\n"]})
+                         {"onearg":["select * from greetings where id = $1\n", "\n"]})
 
