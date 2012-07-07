@@ -2,7 +2,7 @@
 import sqlite3
 from twisted.trial import unittest
 
-from threadbare.storage import sqllib
+import sqllib
 
 
 
