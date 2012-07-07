@@ -24,8 +24,9 @@ Tests for sqllib
 
 """
 
+import os
 import sqlite3
-from twisted.trial import unittest
+import unittest
 
 import sqllib
 
@@ -124,4 +125,26 @@ select * from greetings where id = $1
         self.assertEqual(preface, "\n\npreface\n\n\n")
         self.assertEqual(blocks,
                          {"onearg":["select * from greetings where id = $1\n", "\n"]})
+
+
+class TestLibraryFromFile(unittest.TestCase):
+    def setUp(self):
+        self.root = os.path.dirname(os.path.abspath(__file__))
+        self.filepath = os.path.join(self.root, "greetings.sql")
+        self.connection = sqlite3.Connection(":memory:")
+
+    def test_load_file(self):
+        lib = sqllib.Library.from_path(self.filepath)
+        lib.connect(self.connection)
+        #self.assertEqual(lib.create_greetings.__doc__, "")
+        print lib.create_greetings
+        lib.create_greetings()
+        lib.create_languages()
+        lib.add_language(1, "en")
+        lib.add_greeting(1, 1, "hello world")
+        results = lib.get_greeting(1)
+        self.assertEqual(results, [(1, 1, u'hello world')])
+
+
+
 

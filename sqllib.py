@@ -5,6 +5,7 @@ of a system's code-flow. It provides a means to construct the basic Python
 interfaces to a sql based application.
 
 """
+import functools
 
 
 
@@ -25,20 +26,24 @@ class Library(object):
         #self._blocks = blocks
         for blockName, lines in blocks.iteritems():
             body = "".join(lines)
-            if "$1" in body:
-                def sql(*args):
+            if "$1" in body or "?" in body or ":1" in body:
+                def sql(body, *args):
+                    print "running:", body, args
                     # TODO: the function signature should be enforced
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body, args).fetchall()
             else:
-                def sql():
+                def sql(body):
+                    print "running:", body
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body).fetchall()
             sql.__name__ = blockName
             sql.__doc__ = """%s"""%(body)
-            setattr(self, blockName, sql)
+            wrapped = functools.update_wrapper(functools.partial(sql, body), sql)
+
+            setattr(self, blockName, wrapped)
 
     def connect(self, connection):
         self.connection = connection
@@ -51,10 +56,10 @@ class Library(object):
         currentBlockId = None
 
         for line in lines:
-            print "line:", line
+            #print "line:", line
             l = line.strip()
             if l.startswith("[") and l.endswith("]"):
-                print "new block:", line
+                #print "new block:", line
                 # new block:
                 currentBlockId = line.strip().strip("[]")
                 if currentBlockId not in blocks:
@@ -62,7 +67,7 @@ class Library(object):
             elif currentBlockId is None:
                 prefaceLines.append(line)
             else:
-                print "Adding to block:", line
+                #print "Adding to block:", line
                 blocks[currentBlockId].append(line)
 
         return "\n".join(prefaceLines), blocks
@@ -77,4 +82,9 @@ class Library(object):
         lines = [s + "\n" for s in string.splitlines()]
         return cls.from_lines(lines)
 
+    @classmethod
+    def from_path(cls, path):
+        with open(path, "r") as libfile:
+            lines = libfile.readlines()
+        return cls.from_lines(lines)
 

@@ -1,7 +1,7 @@
 --
 -- mobile.sql
 --
--- these queries include a bunch mobile queries
+-- a bunch mobile queries
 --
 
 [get_design]
