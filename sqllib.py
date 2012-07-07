@@ -6,7 +6,24 @@ interfaces to a sql based application.
 
 """
 import functools
+import re
 
+
+def detect_paramstyle(sql):
+    string_literals = re.compile(r"'.*?'")
+    named = re.compile(r".*:[a-zA-Z]+.*")
+    pyformat = re.compile(r".*%(.*?)s.*")
+    sql = string_literals.sub("", sql)
+    if "?" in sql:
+        return "qmark"
+    elif "$1" in sql or ":1" in sql:
+        return "numeric"
+    elif named.match(sql):
+        return "named"
+    elif "%s" in sql:
+        return "format"
+    elif pyformat.match(sql):
+        return "pyformat"
 
 
 class LibraryDisconnected(Exception):

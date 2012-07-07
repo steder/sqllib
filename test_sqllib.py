@@ -32,6 +32,84 @@ import sqllib
 
 
 
+class TestConverting(unittest.TestCase):
+    """
+    Basically if we're given sql that uses
+    different param styles than what is supported
+    for a dbapi driver we want to convert that sql
+    to the current drivers paramstyle.
+
+    """
+
+
+class TestDetectingParamstyle(unittest.TestCase):
+    qmark = "select * from table where id = ?"
+    qmark_false_positive = "select * from table where name like '?'"
+    numeric = "select * from table where id = :1"
+    numeric_false_positive = "select * from table where name like ':1'"
+    # numeric2 not in pep-249, is it just a sqlite thing?
+    numeric2 = "select * from table where id = $1"
+    numeric2_false_positive = "select * from table where name like '$1'"
+    named = "select * from table where id = :name"
+    named_false_positive = "select * from table where name like ':name'"
+    format = "select * from table where id = %s"
+    format_false_positive = "select * from table where name like '%s'"
+    pyformat = "select * from table where id = %(name)s"
+    pyformat_false_positive = "select * from table where name like '%(name)s'"
+
+    # this is just one of many possible combinations
+    # that needs to raise some kind of invalid sql exception
+    conflicting = "select * from table where name = ? and value = %s"
+
+    def test_qmark(self):
+        style = sqllib.detect_paramstyle(self.qmark)
+        self.assertEqual(style, "qmark")
+
+    def test_qmark_false_positive(self):
+        style = sqllib.detect_paramstyle(self.qmark_false_positive)
+        self.assertEqual(style, None)
+
+    def test_numeric(self):
+        style = sqllib.detect_paramstyle(self.numeric)
+        self.assertEqual(style, "numeric")
+
+    def test_numeric_false(self):
+        style = sqllib.detect_paramstyle(self.numeric_false_positive)
+        self.assertEqual(style, None)
+
+    def test_numeric2(self):
+        style = sqllib.detect_paramstyle(self.numeric2)
+        self.assertEqual(style, "numeric")
+
+    def test_numeric2_false(self):
+        style = sqllib.detect_paramstyle(self.numeric2_false_positive)
+        self.assertEqual(style, None)
+
+    def test_named(self):
+        style = sqllib.detect_paramstyle(self.named)
+        self.assertEqual(style, "named")
+
+    def test_named_false(self):
+        style = sqllib.detect_paramstyle(self.named_false_positive)
+        self.assertEqual(style, None)
+
+    def test_format(self):
+        style = sqllib.detect_paramstyle(self.format)
+        self.assertEqual(style, "format")
+
+    def test_format_false(self):
+        style = sqllib.detect_paramstyle(self.format_false_positive)
+        self.assertEqual(style, None)
+
+    def test_pyformat(self):
+        style = sqllib.detect_paramstyle(self.pyformat)
+        self.assertEqual(style, "pyformat")
+
+    def test_pyformat_false(self):
+        style = sqllib.detect_paramstyle(self.pyformat_false_positive)
+        self.assertEqual(style, None)
+
+
 
 class TestLibrary(unittest.TestCase):
     def setUp(self):
