@@ -5,6 +5,7 @@ of a system's code-flow. It provides a means to construct the basic Python
 interfaces to a sql based application.
 
 """
+import collections
 import functools
 import re
 
@@ -26,12 +27,22 @@ def detect_paramstyle(sql):
         return "pyformat"
 
 
+class SqlBlock(object):
+    """
+    Simple wrapper around a block of SQL
+    """
+    def __init__(self, name, args=None, kwargs=None):
+        self.statements = []
+        self.name = name
+        self.args = args if args else []
+        self.kwargs = kwargs if kwargs else {}
+
+
 class LibraryDisconnected(Exception):
     """
     Raised whenever we try to run sql without first connecting
     the library to the database.
     """
-
 
 
 class Library(object):
@@ -41,9 +52,27 @@ class Library(object):
         self.connection = None
         self.__doc__ = "%s\n\n%s"%(preface, self.__doc__)
         #self._blocks = blocks
-        for blockName, lines in blocks.iteritems():
-            body = "".join(lines)
-            if "$1" in body or "?" in body or ":1" in body:
+        for blockName, block in blocks.items():
+            body = "".join(block.statements)
+            #if "$1" in body or "?" in body or ":1" in body:
+            if block.args and block.kwargs:
+                print 'defining args,kwargs'
+                def sql(body, *args, **kwargs):
+                    print "running:", body, args, kwargs
+                    # TODO: the function signature should be enforced
+                    if not self.connection:
+                        raise LibraryDisconnected()
+                    return self.connection.cursor().execute(body, args, kwargs).fetchall()
+            elif not block.args and block.kwargs:
+                print 'defining just kwargs'
+                def sql(body, **kwargs):
+                    print "running:", body, kwargs
+                    # TODO: the function signature should be enforced
+                    if not self.connection:
+                        raise LibraryDisconnected()
+                    return self.connection.cursor().execute(body, kwargs).fetchall()
+            elif block.args and not block.kwargs:
+                print 'defining just args'
                 def sql(body, *args):
                     print "running:", body, args
                     # TODO: the function signature should be enforced
@@ -51,11 +80,13 @@ class Library(object):
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body, args).fetchall()
             else:
+                print 'defining no args'
                 def sql(body):
                     print "running:", body
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body).fetchall()
+
             sql.__name__ = blockName
             sql.__doc__ = """%s"""%(body)
             wrapped = functools.update_wrapper(functools.partial(sql, body), sql)
@@ -78,14 +109,20 @@ class Library(object):
             if l.startswith("[") and l.endswith("]"):
                 #print "new block:", line
                 # new block:
-                currentBlockId = line.strip().strip("[]")
+                blockHeader = line.strip().strip("[]")
+                parts = blockHeader.split(":")
+                currentBlockId = parts[0]
+                if len(parts) > 1:
+                    args = parts[1:]
+                else:
+                    args = []
                 if currentBlockId not in blocks:
-                    blocks[currentBlockId] = []
+                    blocks[currentBlockId] = SqlBlock(currentBlockId, args=args)
             elif currentBlockId is None:
                 prefaceLines.append(line)
             else:
                 #print "Adding to block:", line
-                blocks[currentBlockId].append(line)
+                blocks[currentBlockId].statements.append(line)
 
         return "\n".join(prefaceLines), blocks
 
@@ -104,4 +141,3 @@ class Library(object):
         with open(path, "r") as libfile:
             lines = libfile.readlines()
         return cls.from_lines(lines)
-

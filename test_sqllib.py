@@ -135,7 +135,7 @@ select 2
         self.with_arguments = """
 preface
 
-[onearg]
+[onearg:id]
 select * from greetings where id = $1
 
 """
@@ -169,7 +169,7 @@ select * from greetings where id = $1
     def test_libraryWithArgs(self):
         lib = self._load_library(self.with_arguments)
         self.assertTrue(hasattr(lib, "onearg"),
-                        "lib should have a 'onearg' attribute")
+                        "lib should have a 'onearg:id' attribute")
         self.assertEqual(lib.onearg.__name__, "onearg")
         self.assertEqual(lib.onearg.__doc__,
                          "select * from greetings where id = $1\n\n")
@@ -179,7 +179,7 @@ select * from greetings where id = $1
     def test_libraryWithArgs2(self):
         lib = self._load_library(self.with_arguments)
         self.assertTrue(hasattr(lib, "onearg"),
-                        "lib should have a 'onearg' attribute")
+                        "lib should have a 'onearg:id' attribute")
         self.assertEqual(lib.onearg.__name__, "onearg")
         self.assertEqual(lib.onearg.__doc__,
                          "select * from greetings where id = $1\n\n")
@@ -189,19 +189,21 @@ select * from greetings where id = $1
     def test_parse_simple(self):
         preface, blocks = sqllib.Library._parse_blocks([s + "\n" for s in self.simple.splitlines()])
         self.assertEqual(preface, "\n\npreface\n\n\n")
-        self.assertEqual(blocks, {"sym":["select 1\n", "\n"]})
+        self.assertEqual(dict((b.name, b.statements) for b in blocks.values()),
+                         {"sym":["select 1\n", "\n"]})
 
     def test_parse_multiple(self):
         preface, blocks = sqllib.Library._parse_blocks([s + "\n" for s in self.multiple.splitlines()])
         self.assertEqual(preface, "\n\npreface\n\n\n")
-        self.assertEqual(blocks, {"sym1":["select 1\n", "\n"],
-                                  "sym2":["select 2\n", "\n"]})
+        self.assertEqual(dict((b.name, b.statements) for b in blocks.values()),
+                         {"sym1":["select 1\n", "\n"],
+                          "sym2":["select 2\n", "\n"]})
 
     def test_parse_with_arguments(self):
         preface, blocks = sqllib.Library._parse_blocks(
             [s + "\n" for s in self.with_arguments.splitlines()])
         self.assertEqual(preface, "\n\npreface\n\n\n")
-        self.assertEqual(blocks,
+        self.assertEqual(dict((b.name, b.statements) for b in blocks.values()),
                          {"onearg":["select * from greetings where id = $1\n", "\n"]})
 
 
@@ -222,7 +224,3 @@ class TestLibraryFromFile(unittest.TestCase):
         lib.add_greeting(1, 1, "hello world")
         results = lib.get_greeting(1)
         self.assertEqual(results, [(1, 1, u'hello world')])
-
-
-
-
