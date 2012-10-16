@@ -16,3 +16,6 @@ create table languages (id int, name text)
 
 [add_language:id,name]
 insert into languages (id, name) values (?, ?)
+
+[get_all_greetings]
+select * from greetings
