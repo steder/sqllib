@@ -7,6 +7,7 @@ interfaces to a sql based application.
 """
 import collections
 import functools
+import os
 import re
 
 
@@ -48,10 +49,15 @@ class LibraryDisconnected(Exception):
 class Library(object):
     """
     """
-    def __init__(self, preface, blocks):
+    def __init__(self, preface, blocks, path=None):
+        self.path = path
+        if self.path:
+            self.modified = os.stat(path).st_mtime
         self.connection = None
+        self._load_library(preface, blocks)
+
+    def _load_library(self, preface, blocks):
         self.__doc__ = "%s\n\n%s"%(preface, self.__doc__)
-        #self._blocks = blocks
         for blockName, block in blocks.items():
             body = "".join(block.statements)
             #if "$1" in body or "?" in body or ":1" in body:
@@ -93,6 +99,15 @@ class Library(object):
 
             setattr(self, blockName, wrapped)
 
+    def reload(self):
+        """
+        Only applies if this has `path` associated with it
+        """
+        if self.path:
+            with open(self.path, "r") as libfile:
+                lines = libfile.readlines()
+            self._load_library(*self._parse_blocks(lines))
+
     def connect(self, connection):
         self.connection = connection
 
@@ -127,17 +142,17 @@ class Library(object):
         return "\n".join(prefaceLines), blocks
 
     @classmethod
-    def from_lines(cls, lines):
+    def from_lines(cls, lines, **kwargs):
         preface, blocks = cls._parse_blocks(lines)
-        return cls(preface, blocks)
+        return cls(preface, blocks, **kwargs)
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string, **kwargs):
         lines = [s + "\n" for s in string.splitlines()]
-        return cls.from_lines(lines)
+        return cls.from_lines(lines, **kwargs)
 
     @classmethod
     def from_path(cls, path):
         with open(path, "r") as libfile:
             lines = libfile.readlines()
-        return cls.from_lines(lines)
+        return cls.from_lines(lines, path=path)

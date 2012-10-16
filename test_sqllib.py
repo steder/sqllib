@@ -224,3 +224,34 @@ class TestLibraryFromFile(unittest.TestCase):
         lib.add_greeting(1, 1, "hello world")
         results = lib.get_greeting(1)
         self.assertEqual(results, [(1, 1, u'hello world')])
+
+
+class TestLibraryReloadsOnFileChange(unittest.TestCase):
+    def setUp(self):
+        self.root = os.path.dirname(os.path.abspath(__file__))
+        self.dir = "/tmp/test"
+        self.filepath = os.path.join(self.dir, "test.sql")
+        try:
+            os.mkdir("/tmp/test")
+        except OSError:
+            pass
+        with open(self.filepath, "w") as f:
+            f.write("this is a test file\n\n")
+        self.connection = sqlite3.Connection(":memory:")
+
+    def test_file_reloads(self):
+        lib = sqllib.Library.from_path(self.filepath)
+        self.assertTrue('sym1' not in dir(lib))
+        self.assertTrue('sym2' not in dir(lib))
+        with open(self.filepath, "w") as f:
+            f.write("""
+[sym1]
+select 1
+
+[sym2]
+select 2
+"""
+                    )
+        lib.reload()
+        self.assertTrue('sym1' in dir(lib))
+        self.assertTrue('sym2' in dir(lib))
