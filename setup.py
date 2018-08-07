@@ -3,16 +3,15 @@
 from setuptools import setup
 
 
-setup(name='bearded-nemesis',
+setup(name='sqllib',
       version='0.1',
       description='SQL Templates for Python',
-      long_description=open("README.rst", "r").read(),
+      long_description=open("README.md", "r").read(),
       author='Mike Steder',
       author_email='steder@gmail.com',
-      url='http://github.com/steder/txtemplate',
-      packages=['sqltemplate',
-                'sqltemplate.test'],
-      test_suite="sqltemplate.test",
+      url='http://github.com/steder/sqllib',
+      modules=["sqllib.py"],
+      test_suite="test_sqllib",
       install_requires=[],
       license="MIT",
       classifiers=[

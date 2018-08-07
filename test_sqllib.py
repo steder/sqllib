@@ -166,6 +166,15 @@ select * from greetings where id = $1
         lib.connect(self.connection)
         self.assertEqual(lib.sym(), [(1,)])
 
+    def test_libraryFromLinesRaw(self):
+        """To get the raw SQL query it's just
+
+        lib.<query name>.raw
+
+        """
+        lib = self._load_library(self.simple)
+        self.assertEqual(lib.sym.raw, "select 1")
+
     def test_libraryWithArgs(self):
         lib = self._load_library(self.with_arguments)
         self.assertTrue(hasattr(lib, "onearg"),

@@ -62,39 +62,40 @@ class Library(object):
             body = "".join(block.statements)
             #if "$1" in body or "?" in body or ":1" in body:
             if block.args and block.kwargs:
-                print 'defining args,kwargs'
+                #print 'defining args,kwargs'
                 def sql(body, *args, **kwargs):
-                    print "running:", body, args, kwargs
+                    #print "running:", body, args, kwargs
                     # TODO: the function signature should be enforced
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body, args, kwargs).fetchall()
             elif not block.args and block.kwargs:
-                print 'defining just kwargs'
+                #print 'defining just kwargs'
                 def sql(body, **kwargs):
-                    print "running:", body, kwargs
+                    #print "running:", body, kwargs
                     # TODO: the function signature should be enforced
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body, kwargs).fetchall()
             elif block.args and not block.kwargs:
-                print 'defining just args'
+                #print 'defining just args'
                 def sql(body, *args):
-                    print "running:", body, args
+                    #print "running:", body, args
                     # TODO: the function signature should be enforced
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body, args).fetchall()
             else:
-                print 'defining no args'
+                #print 'defining no args'
                 def sql(body):
-                    print "running:", body
+                    #print "running:", body
                     if not self.connection:
                         raise LibraryDisconnected()
                     return self.connection.cursor().execute(body).fetchall()
 
             sql.__name__ = blockName
             sql.__doc__ = """%s"""%(body)
+            sql.raw = body.strip()
             wrapped = functools.update_wrapper(functools.partial(sql, body), sql)
 
             setattr(self, blockName, wrapped)
